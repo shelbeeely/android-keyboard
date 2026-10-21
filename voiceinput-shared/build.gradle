@@ -69,6 +69,44 @@ final def translationsWithoutEngValues = { final String path ->
     destDir
 }
 
+// Bundles the English Whistle model (https://huggingface.co/Cactus-Compute/whistle) as an asset.
+// The keyboard has no network access, so it ships in the APK and is fetched here at a pinned
+// revision with a checksum. Pass -PwhistleModel=false to build without it, in which case the
+// "Use Whistle for English" setting falls back to Whisper.
+final def whistleAssetsDir = file("$buildDir/generated/whistle-assets")
+final def whistleModelRevision = "741118687e1f008f06d1351a402a731274789790"
+final def whistleModelSha256 = "b6e02f048568ac5d01a2042556c658061e699acbc0aa2a1439f52f3d461dffeb"
+final def bundleWhistleModel = (findProperty("whistleModel") ?: "true").toString() != "false"
+
+final def sha256Of = { File file ->
+    final def digest = java.security.MessageDigest.getInstance("SHA-256")
+    file.eachByte(1 << 16) { byte[] buf, int len -> digest.update(buf, 0, len) }
+    digest.digest().encodeHex().toString()
+}
+
+tasks.register("downloadWhistleModel") {
+    final def dest = new File(whistleAssetsDir, "whistle.cact")
+    outputs.file(dest)
+    onlyIf { bundleWhistleModel }
+
+    doLast {
+        if(dest.exists() && sha256Of(dest) == whistleModelSha256) return
+
+        dest.parentFile.mkdirs()
+        final def partial = new File(dest.path + ".part")
+        new URL("https://huggingface.co/Cactus-Compute/whistle/resolve/${whistleModelRevision}/whistle.cact")
+                .withInputStream { input -> partial.withOutputStream { it << input } }
+
+        final def actual = sha256Of(partial)
+        if(actual != whistleModelSha256) {
+            partial.delete()
+            throw new GradleException("whistle.cact checksum mismatch: expected ${whistleModelSha256}, got ${actual}")
+        }
+        dest.delete()
+        partial.renameTo(dest)
+    }
+}
+
 android {
     namespace 'org.futo.voiceinput.shared'
     compileSdk 35
@@ -91,6 +129,7 @@ android {
     sourceSets {
         main {
             res.srcDirs = ['../voiceinput-shared/src/main/res', translationsWithoutEngValues('../translations/voiceinput')]
+            if(bundleWhistleModel) assets.srcDirs += whistleAssetsDir
         }
     }
 
@@ -108,6 +147,8 @@ android {
         mlModelBinding true
     }
 }
+
+preBuild.dependsOn("downloadWhistleModel")
 
 dependencies {
     implementation 'androidx.core:core-ktx:1.13.1'

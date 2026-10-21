@@ -9,6 +9,12 @@ val BUILTIN_ENGLISH_MODEL: ModelLoader = ModelBuiltInAsset(
     ggmlFile = "tiny_en_acft_q8_0.bin.not.tflite"
 )
 
+// Bundled at build time by the downloadWhistleModel task, may be missing if that was disabled
+val BUILTIN_WHISTLE_MODEL: ModelLoader = ModelBuiltInAsset(
+    name = R.string.whistle_name,
+    ggmlFile = "whistle.cact"
+)
+
 val ENGLISH_MODELS: List<ModelLoader> = listOf(
     ModelBuiltInAsset(
         name = R.string.tiny_en_name,

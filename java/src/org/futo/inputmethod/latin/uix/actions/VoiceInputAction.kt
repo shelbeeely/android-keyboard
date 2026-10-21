@@ -39,6 +39,7 @@ import org.futo.inputmethod.latin.uix.PersistentActionState
 import org.futo.inputmethod.latin.uix.ResourceHelper
 import org.futo.inputmethod.latin.uix.USE_PERSONAL_DICT
 import org.futo.inputmethod.latin.uix.USE_VAD_AUTOSTOP
+import org.futo.inputmethod.latin.uix.USE_WHISTLE_FOR_ENGLISH
 import org.futo.inputmethod.latin.uix.VERBOSE_PROGRESS
 import org.futo.inputmethod.latin.uix.getSetting
 import org.futo.inputmethod.latin.uix.setSetting
@@ -46,6 +47,7 @@ import org.futo.inputmethod.latin.uix.settings.SettingsActivity
 import org.futo.inputmethod.latin.uix.utils.ModelOutputSanitizer
 import org.futo.inputmethod.latin.xlm.UserDictionaryObserver
 import org.futo.inputmethod.updates.openURI
+import org.futo.voiceinput.shared.BUILTIN_WHISTLE_MODEL
 import org.futo.voiceinput.shared.ModelDoesNotExistException
 import org.futo.voiceinput.shared.RecognizerView
 import org.futo.voiceinput.shared.RecognizerViewListener
@@ -309,7 +311,18 @@ val VoiceInputAction = Action(icon = R.drawable.mic_fill,
     windowImpl = { manager, persistentState ->
         val locales = manager.getActiveLocales()
 
-        val model = ResourceHelper.tryFindingVoiceInputModelForLocale(manager.getContext(), locales.firstOrNull() ?: Locale.ROOT)
+        val context = manager.getContext()
+        val locale = locales.firstOrNull() ?: Locale.ROOT
+
+        val useWhistle = locale.language == "en"
+                && context.getSetting(USE_WHISTLE_FOR_ENGLISH)
+                && BUILTIN_WHISTLE_MODEL.exists(context)
+
+        val model = if(useWhistle) {
+            BUILTIN_WHISTLE_MODEL
+        } else {
+            ResourceHelper.tryFindingVoiceInputModelForLocale(context, locale)
+        }
 
         if(model == null) {
             VoiceInputNoModelWindow(locales.firstOrNull() ?: Locale.ROOT)

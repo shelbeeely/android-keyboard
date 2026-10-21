@@ -36,6 +36,7 @@
 
     <!-- Model name for the tiny english model -->
     <string name="tiny_en_name">English-39 (default)</string>
+    <string name="whistle_name">Whistle</string>
     <!-- Model name for the base english model -->
     <string name="base_en_name">English-74 (slower, more accurate)</string>
     <!-- Model name for the small english model -->

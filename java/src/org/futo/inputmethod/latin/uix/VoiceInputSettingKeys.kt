@@ -73,3 +73,8 @@ val ANIMATE_BUBBLE = SettingsKey(
     key = booleanPreferencesKey("animate_bubble"),
     default = true
 )
+
+val USE_WHISTLE_FOR_ENGLISH = SettingsKey(
+    key = booleanPreferencesKey("use_whistle_for_english"),
+    default = false
+)

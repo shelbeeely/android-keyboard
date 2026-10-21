@@ -18,6 +18,7 @@ import org.futo.inputmethod.latin.uix.SYSTEM_VOICE_INPUT_PACKAGE
 import org.futo.inputmethod.latin.uix.USE_PERSONAL_DICT
 import org.futo.inputmethod.latin.uix.USE_SYSTEM_VOICE_INPUT
 import org.futo.inputmethod.latin.uix.USE_VAD_AUTOSTOP
+import org.futo.inputmethod.latin.uix.USE_WHISTLE_FOR_ENGLISH
 import org.futo.inputmethod.latin.uix.settings.DropDownPickerSettingItem
 import org.futo.inputmethod.latin.uix.settings.NavigationItemStyle
 import org.futo.inputmethod.latin.uix.settings.Tip
@@ -117,6 +118,12 @@ val VoiceInputMenu = UserSettingsMenu(
         },
 
         //if(!systemVoiceInput.value) {
+        userSettingToggleDataStore(
+            title = R.string.voice_input_settings_use_whistle,
+            subtitle = R.string.voice_input_settings_use_whistle_subtitle,
+            setting = USE_WHISTLE_FOR_ENGLISH
+        ).copy(visibilityCheck = visibilityCheckNotSystemVoiceInput),
+
         userSettingToggleDataStore(
             title = R.string.voice_input_settings_indication_sounds,
             subtitle = R.string.voice_input_settings_indication_sounds_subtitle,

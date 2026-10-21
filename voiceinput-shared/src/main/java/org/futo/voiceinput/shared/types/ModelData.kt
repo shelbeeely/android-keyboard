@@ -3,6 +3,8 @@ package org.futo.voiceinput.shared.types
 import android.content.Context
 import androidx.annotation.StringRes
 import org.futo.voiceinput.shared.ggml.WhisperGGML
+import org.futo.voiceinput.shared.whistle.WhistleModel
+import org.futo.voiceinput.shared.whistle.isWhistleModel
 import java.io.File
 import java.io.FileInputStream
 import java.io.IOException
@@ -31,6 +33,15 @@ private fun loadMappedFile(context: Context, filePath: String): MappedByteBuffer
     }
 }
 
+// Whistle models (.cact) and Whisper models (GGML) are told apart by their magic
+private fun openSpeechModel(buffer: MappedByteBuffer): SpeechModel {
+    return if(isWhistleModel(buffer)) {
+        WhistleModel(buffer)
+    } else {
+        WhisperGGML(buffer)
+    }
+}
+
 // Maybe add `val languages: Set<Language>`
 interface ModelLoader {
     @get:StringRes
@@ -39,7 +50,7 @@ interface ModelLoader {
     fun exists(context: Context): Boolean
     fun getRequiredDownloadList(context: Context): List<String>
 
-    fun loadGGML(context: Context): WhisperGGML
+    fun loadModel(context: Context): SpeechModel
 
     fun key(context: Context): Any
 }
@@ -56,9 +67,9 @@ internal class ModelBuiltInAsset(
         return listOf()
     }
 
-    override fun loadGGML(context: Context): WhisperGGML {
+    override fun loadModel(context: Context): SpeechModel {
         val file = loadMappedFile(context, ggmlFile)
-        return WhisperGGML(file)
+        return openSpeechModel(file)
     }
 
     override fun key(context: Context): Any {
@@ -97,9 +108,9 @@ internal class ModelDownloadable(
         }
     }
 
-    override fun loadGGML(context: Context): WhisperGGML {
+    override fun loadModel(context: Context): SpeechModel {
         val file = context.tryOpenDownloadedModel(ggmlFile)
-        return WhisperGGML(file)
+        return openSpeechModel(file)
     }
 
     override fun key(context: Context): Any {
@@ -119,9 +130,9 @@ public class ModelFileFile(
         return listOf()
     }
 
-    override fun loadGGML(context: Context): WhisperGGML {
+    override fun loadModel(context: Context): SpeechModel {
         val file = tryOpenDownloadedModel(file)
-        return WhisperGGML(file)
+        return openSpeechModel(file)
     }
 
     override fun key(context: Context): Any {

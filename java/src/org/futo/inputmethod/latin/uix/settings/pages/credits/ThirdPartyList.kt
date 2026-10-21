@@ -28,6 +28,13 @@ val ThirdPartyList: List<ThirdPartyItem> = listOf(
         License.Apache2
     ),
     TP(
+        "Cactus Whistle",
+        "Voice Input powered by Cactus Whistle and the Needle engine",
+        "https://github.com/cactus-compute/needle",
+        "Copyright (c) Cactus Compute",
+        License.Apache2
+    ),
+    TP(
         "ggml projects",
         "whisper.cpp, llama.cpp, ggml",
         "https://ggml.ai",

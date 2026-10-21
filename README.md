@@ -40,6 +40,10 @@ You can then open the project in Android Studio and build it that way, or use gr
 ./gradlew assembleStableRelease
 ```
 
+### Whistle voice input
+
+Besides Whisper, voice input can run [Cactus Whistle](https://huggingface.co/Cactus-Compute/whistle) models (`.cact` files, for English, German, French, Spanish, Italian, Dutch and Polish), imported the same way as other voice input models. Whistle runs on the Needle engine, which Cactus only publishes as a prebuilt static library, so for `arm64-v8a` and `armeabi-v7a` the native build downloads it from Hugging Face at a pinned revision and checks its hash. To build offline, pass `-DNEEDLE_DIR=<folder with libneedle.a and needle.h>` to CMake, or pass `-DWHISTLE=OFF` to leave Whistle out. Other ABIs are built without Whistle.
+
 ## APK signing
 
 For official FUTO Keyboard versions, you can verify the APK's signing key fingerprint for integrity.

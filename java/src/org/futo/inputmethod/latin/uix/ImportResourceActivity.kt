@@ -500,6 +500,7 @@ fun determineFileKind(inputStream: InputStream): FileKindAndInfo {
     inputStream.read(array)
 
     val voiceInputMagic = 0x6c6d6767.toUInt()
+    val whistleVoiceInputMagic = 0x842ae105.toUInt() // .cact container, see voiceinput-shared isWhistleModel
     val transformerMagic = 0x47475546.toUInt()
     val dictionaryMagic = 0x9bc13afe.toUInt()
     val mozcMagic = 0xef4d4f5a.toUInt()
@@ -508,6 +509,7 @@ fun determineFileKind(inputStream: InputStream): FileKindAndInfo {
 
     return when {
         magic == voiceInputMagic -> FileKindAndInfo(FileKind.VoiceInput, null, null)
+        magic == whistleVoiceInputMagic -> FileKindAndInfo(FileKind.VoiceInput, null, null)
         magic == transformerMagic -> FileKindAndInfo(FileKind.Transformer, null, null)
         magic == mozcMagic -> {
             FileKindAndInfo(

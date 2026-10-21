@@ -7,7 +7,8 @@ import org.futo.voiceinput.shared.ggml.DecodingMode
 import org.futo.voiceinput.shared.ggml.InferenceCancelledException
 import org.futo.voiceinput.shared.ggml.InvalidModelException
 import org.futo.voiceinput.shared.ggml.inferenceContext
-import org.futo.voiceinput.shared.types.SpeechModel
+import org.futo.voiceinput.shared.types.StreamingSpeechModel
+import org.futo.voiceinput.shared.types.StreamingUpdate
 import org.json.JSONObject
 import java.nio.Buffer
 import java.nio.ByteBuffer
@@ -37,7 +38,7 @@ class InvalidWhistleModelException(reason: String) : InvalidModelException("The 
 @Keep
 class WhistleModel(
     private val modelBuffer: Buffer
-) : SpeechModel {
+) : StreamingSpeechModel {
     @Volatile
     private var cancelled = false
     private var closed = false
@@ -72,9 +73,8 @@ class WhistleModel(
         }
         cancelled = false
 
-        // Whistle can only be forced to one language, otherwise it detects among all of its own
-        val language = languages.singleOrNull()?.takeIf { it in WHISTLE_LANGUAGES }
-        val keywords = glossary.joinToString(separator = "\n").ifEmpty { null }
+        val language = languageFor(languages)
+        val keywords = keywordsFor(glossary)
 
         val output = synchronized(engineLock) {
             load()
@@ -95,6 +95,43 @@ class WhistleModel(
         return@withContext text
     }
 
+    override suspend fun resetStream() = withContext(inferenceContext) {
+        synchronized(engineLock) {
+            load()
+            streamStopNative()
+        }
+        Unit
+    }
+
+    override suspend fun processStream(
+        samples: FloatArray,
+        glossary: List<String>,
+        languages: Array<String>
+    ): StreamingUpdate = withContext(inferenceContext) {
+        if(closed) {
+            throw IllegalStateException("WhistleModel has already been closed, cannot stream")
+        }
+
+        val output = synchronized(engineLock) {
+            // Loading a different model in between drops the stream, which then simply restarts
+            load()
+            streamProcessNative(samples, languageFor(languages), keywordsFor(glossary))
+        } ?: throw IllegalStateException("Whistle streaming failed: ${lastErrorNative()}")
+
+        val json = JSONObject(output)
+        return@withContext StreamingUpdate(
+            committed = json.optString("text").trim(),
+            pending = json.optString("pending").trim()
+        )
+    }
+
+    // Whistle can only be forced to one language, otherwise it detects among all of its own
+    private fun languageFor(languages: Array<String>): String? =
+        languages.singleOrNull()?.takeIf { it in WHISTLE_LANGUAGES }
+
+    private fun keywordsFor(glossary: List<String>): String? =
+        glossary.joinToString(separator = "\n").ifEmpty { null }
+
     // The engine has no way to abort a transcription; it is short, so drop its result instead
     override fun cancel() {
         cancelled = true
@@ -111,6 +148,8 @@ class WhistleModel(
     private external fun isAvailableNative(): Boolean
     private external fun loadNative(buffer: Buffer): String?
     private external fun transcribeNative(samples: FloatArray, language: String?, keywords: String?): String?
+    private external fun streamProcessNative(samples: FloatArray, language: String?, keywords: String?): String?
+    private external fun streamStopNative(): String?
     private external fun lastErrorNative(): String
 
     companion object {

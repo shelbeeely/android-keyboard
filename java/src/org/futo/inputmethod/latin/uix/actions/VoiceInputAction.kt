@@ -30,10 +30,12 @@ import org.futo.inputmethod.latin.uix.AUDIO_FOCUS
 import org.futo.inputmethod.latin.uix.Action
 import org.futo.inputmethod.latin.uix.ActionWindow
 import org.futo.inputmethod.latin.uix.CAN_EXPAND_SPACE
+import org.futo.inputmethod.latin.uix.CLEAN_UP_SPEECH
 import org.futo.inputmethod.latin.uix.CloseResult
 import org.futo.inputmethod.latin.uix.DISALLOW_SYMBOLS
 import org.futo.inputmethod.latin.uix.ENABLE_SOUND
 import org.futo.inputmethod.latin.uix.KeyboardManagerForAction
+import org.futo.inputmethod.latin.uix.LIVE_TRANSCRIPTION
 import org.futo.inputmethod.latin.uix.PREFER_BLUETOOTH
 import org.futo.inputmethod.latin.uix.PersistentActionState
 import org.futo.inputmethod.latin.uix.ResourceHelper
@@ -45,6 +47,7 @@ import org.futo.inputmethod.latin.uix.getSetting
 import org.futo.inputmethod.latin.uix.setSetting
 import org.futo.inputmethod.latin.uix.settings.SettingsActivity
 import org.futo.inputmethod.latin.uix.utils.ModelOutputSanitizer
+import org.futo.inputmethod.latin.uix.utils.SpeechCleanup
 import org.futo.inputmethod.latin.xlm.UserDictionaryObserver
 import org.futo.inputmethod.updates.openURI
 import org.futo.voiceinput.shared.BUILTIN_WHISTLE_MODEL
@@ -121,6 +124,7 @@ private class VoiceInputActionWindow(
     val context = manager.getContext()
 
     private var shouldPlaySounds: Boolean = false
+    private var shouldCleanUpSpeech: Boolean = false
     private fun loadSettings(): RecognizerViewSettings {
         val enableSound = context.getSetting(ENABLE_SOUND)
         val verboseFeedback = false//context.getSetting(VERBOSE_PROGRESS)
@@ -131,6 +135,7 @@ private class VoiceInputActionWindow(
         val useVAD = context.getSetting(USE_VAD_AUTOSTOP)
         val usePersonalDict = context.getSetting(USE_PERSONAL_DICT)
         val animateBubble = context.getSetting(ANIMATE_BUBBLE)
+        val liveTranscription = context.getSetting(LIVE_TRANSCRIPTION)
 
         val primaryModel = model
         val languageSpecificModels = mutableMapOf<Language, ModelLoader>()
@@ -142,6 +147,8 @@ private class VoiceInputActionWindow(
         }
 
         shouldPlaySounds = enableSound
+        shouldCleanUpSpeech = context.getSetting(CLEAN_UP_SPEECH)
+                && locales.firstOrNull()?.language == "en"
 
         return RecognizerViewSettings(
             shouldShowInlinePartialResult = false,
@@ -160,7 +167,8 @@ private class VoiceInputActionWindow(
                 preferBluetoothMic = useBluetoothAudio,
                 requestAudioFocus = requestAudioFocus,
                 canExpandSpace = canExpandSpace,
-                useVADAutoStop = useVAD
+                useVADAutoStop = useVAD,
+                liveTranscription = liveTranscription
             )
         )
     }
@@ -264,11 +272,14 @@ private class VoiceInputActionWindow(
         }
     }
 
+    private fun cleanUp(result: String): String =
+        if(shouldCleanUpSpeech) SpeechCleanup.clean(result) else result
+
     override fun finished(result: String) {
         wasFinished = true
 
         manager.getLifecycleScope().launch(Dispatchers.Main) {
-            val sanitized = ModelOutputSanitizer.sanitize(result, inputTransaction.textContext)
+            val sanitized = ModelOutputSanitizer.sanitize(cleanUp(result), inputTransaction.textContext)
             inputTransaction.commit(sanitized)
             manager.announce(result)
             manager.closeActionWindow()
@@ -277,7 +288,7 @@ private class VoiceInputActionWindow(
 
     override fun partialResult(result: String) {
         manager.getLifecycleScope().launch(Dispatchers.Main) {
-            val sanitized = ModelOutputSanitizer.sanitize(result, inputTransaction.textContext)
+            val sanitized = ModelOutputSanitizer.sanitize(cleanUp(result), inputTransaction.textContext)
             inputTransaction.updatePartial(sanitized)
         }
     }

@@ -78,3 +78,13 @@ val USE_WHISTLE_FOR_ENGLISH = SettingsKey(
     key = booleanPreferencesKey("use_whistle_for_english"),
     default = false
 )
+
+val LIVE_TRANSCRIPTION = SettingsKey(
+    key = booleanPreferencesKey("live_transcription"),
+    default = true
+)
+
+val CLEAN_UP_SPEECH = SettingsKey(
+    key = booleanPreferencesKey("clean_up_speech"),
+    default = false
+)

@@ -24,3 +24,22 @@ interface SpeechModel {
 
     suspend fun close()
 }
+
+// Words newly confirmed by a streaming pass, and the unconfirmed tail after them
+data class StreamingUpdate(
+    val committed: String,
+    val pending: String
+)
+
+// A model that can also transcribe audio live while it is being recorded
+interface StreamingSpeechModel : SpeechModel {
+    // Discards any previous stream so the next process call starts a new one
+    suspend fun resetStream()
+
+    // Appends the next samples of the stream, ideally about one second at a time
+    suspend fun processStream(
+        samples: FloatArray,
+        glossary: List<String>,
+        languages: Array<String>
+    ): StreamingUpdate
+}

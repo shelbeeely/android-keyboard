@@ -23,9 +23,11 @@ import com.konovalov.vad.config.Mode
 import com.konovalov.vad.config.Model
 import com.konovalov.vad.config.SampleRate
 import com.konovalov.vad.models.VadModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
@@ -37,6 +39,7 @@ import org.futo.voiceinput.shared.types.Language
 import org.futo.voiceinput.shared.types.MagnitudeState
 import org.futo.voiceinput.shared.types.ModelInferenceCallback
 import org.futo.voiceinput.shared.types.ModelLoader
+import org.futo.voiceinput.shared.types.toWhisperString
 import org.futo.voiceinput.shared.ui.MicrophoneDeviceState
 import org.futo.voiceinput.shared.whisper.DecodingConfiguration
 import org.futo.voiceinput.shared.whisper.ModelManager
@@ -81,7 +84,8 @@ data class RecordingSettings(
     val preferBluetoothMic: Boolean,
     val requestAudioFocus: Boolean,
     val canExpandSpace: Boolean,
-    val useVADAutoStop: Boolean
+    val useVADAutoStop: Boolean,
+    val liveTranscription: Boolean = false
 )
 
 data class AudioRecognizerSettings(
@@ -111,6 +115,10 @@ class AudioRecognizer(
     private var recorderJob: Job? = null
     private var modelJob: Job? = null
     private var loadModelJob: Job? = null
+
+    // Recorded audio is also sent here while live transcription runs
+    private var liveSamples: Channel<FloatArray>? = null
+    private var liveJob: Job? = null
 
     private var focusRequest: AudioFocusRequest? = null
 
@@ -223,6 +231,7 @@ class AudioRecognizer(
         recorder = null
 
         modelJob?.cancel()
+        stopLiveTranscription()
         isRecording = false
 
         modelRunner.cancelAll()
@@ -308,6 +317,92 @@ class AudioRecognizer(
         return false
     }
 
+    private fun appendSamples(newSamples: FloatArray) {
+        floatSamples.put(newSamples)
+        liveSamples?.trySend(newSamples)
+    }
+
+    // Called before recording starts so that no audio is missed
+    private fun prepareLiveTranscription() {
+        stopLiveTranscription()
+        if(!settings.recordingConfiguration.liveTranscription) return
+
+        liveSamples = Channel(Channel.UNLIMITED)
+    }
+
+    // Called once loadModelJob is set, which the live job waits for
+    private fun startLiveTranscription() {
+        val channel = liveSamples ?: return
+        liveJob = lifecycleScope.launch(Dispatchers.Default) {
+            try {
+                runLiveTranscription(channel)
+            } catch(e: CancellationException) {
+                throw e
+            } catch(e: InvalidModelException) {
+                // Loading failures are reported by the model loading job
+            } catch(e: Exception) {
+                // Live text is a preview, the final pass still runs without it
+                Log.e("AudioRecognizer", "Live transcription stopped", e)
+            } finally {
+                channel.close()
+            }
+        }
+    }
+
+    private fun stopLiveTranscription() {
+        liveSamples?.close()
+        liveSamples = null
+        liveJob?.cancel()
+    }
+
+    // Shows a running transcript while recording. The final text still comes from a full pass
+    // over the recording in runModel, which is more accurate than the streamed one.
+    private suspend fun runLiveTranscription(channel: Channel<FloatArray>) {
+        loadModelJob?.join()
+
+        val model = modelRunner.obtainStreamingModel(settings.modelRunConfiguration) ?: return
+        val languages = settings.decodingConfiguration.languages.map { it.toWhisperString() }.toTypedArray()
+        val glossary = settings.decodingConfiguration.glossary
+
+        model.resetStream()
+
+        val committed = StringBuilder()
+        val buffered = mutableListOf<FloatArray>()
+        var numBuffered = 0
+
+        for (chunk in channel) {
+            buffered.add(chunk)
+            numBuffered += chunk.size
+
+            // Feed about a second at a time, or everything that piled up while the last pass ran
+            if (numBuffered < 16000) continue
+            while (true) {
+                val next = channel.tryReceive().getOrNull() ?: break
+                buffered.add(next)
+                numBuffered += next.size
+            }
+
+            val audio = FloatArray(numBuffered)
+            var offset = 0
+            buffered.forEach { it.copyInto(audio, offset); offset += it.size }
+            buffered.clear()
+            numBuffered = 0
+
+            val update = model.processStream(audio, glossary, languages)
+            if (update.committed.isNotEmpty()) {
+                if (committed.isNotEmpty()) committed.append(' ')
+                committed.append(update.committed)
+            }
+
+            val text = "$committed ${update.pending}".trim()
+            if (text.isNotEmpty() && !isBlankResult(text)) {
+                withContext(Dispatchers.Main) {
+                    listener.partialResult(text)
+                }
+            }
+        }
+    }
+
     private suspend fun recordingJob(recorder: AudioRecord, vad: VadModel?) {
         var hasTalked = false
         var anyNoiseAtAll = false
@@ -374,7 +469,7 @@ class AudioRecognizer(
                 }
             }
 
-            floatSamples.put(samples.sliceArray(0 until nRead).map { it.toFloat() / Short.MAX_VALUE.toFloat() }.toFloatArray())
+            appendSamples(samples.sliceArray(0 until nRead).map { it.toFloat() / Short.MAX_VALUE.toFloat() }.toFloatArray())
 
             // Don't set hasTalked if the start sound may still be playing, otherwise on some
             // devices the rms just explodes and `hasTalked` is always true
@@ -431,7 +526,7 @@ class AudioRecognizer(
                         }
                         break
                     }
-                    floatSamples.put(samples.sliceArray(0 until nRead2).map { it.toFloat() / Short.MAX_VALUE.toFloat() }.toFloatArray())
+                    appendSamples(samples.sliceArray(0 until nRead2).map { it.toFloat() / Short.MAX_VALUE.toFloat() }.toFloatArray())
                 } else {
                     break
                 }
@@ -498,6 +593,8 @@ class AudioRecognizer(
     }
 
     private fun startRecording() {
+        prepareLiveTranscription()
+
         val device = try {
             createRecorderAndJob(settings.recordingConfiguration.preferBluetoothMic)
         } catch (e: SecurityException) {
@@ -523,6 +620,8 @@ class AudioRecognizer(
                 }
             }
         }
+
+        startLiveTranscription()
     }
 
     private val runnerCallback: ModelInferenceCallback = object : ModelInferenceCallback {
@@ -541,6 +640,10 @@ class AudioRecognizer(
     }
 
     private suspend fun runModel() {
+        // Let the last live pass end before the final one, both need the model
+        stopLiveTranscription()
+        liveJob?.join()
+
         loadModelJob?.let {
             if (it.isActive) {
                 println("Model was not finished loading...")

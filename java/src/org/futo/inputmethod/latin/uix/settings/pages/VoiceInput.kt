@@ -11,8 +11,10 @@ import org.futo.inputmethod.latin.R
 import org.futo.inputmethod.latin.uix.ANIMATE_BUBBLE
 import org.futo.inputmethod.latin.uix.AUDIO_FOCUS
 import org.futo.inputmethod.latin.uix.CAN_EXPAND_SPACE
+import org.futo.inputmethod.latin.uix.CLEAN_UP_SPEECH
 import org.futo.inputmethod.latin.uix.DISALLOW_SYMBOLS
 import org.futo.inputmethod.latin.uix.ENABLE_SOUND
+import org.futo.inputmethod.latin.uix.LIVE_TRANSCRIPTION
 import org.futo.inputmethod.latin.uix.PREFER_BLUETOOTH
 import org.futo.inputmethod.latin.uix.SYSTEM_VOICE_INPUT_PACKAGE
 import org.futo.inputmethod.latin.uix.USE_PERSONAL_DICT
@@ -122,6 +124,18 @@ val VoiceInputMenu = UserSettingsMenu(
             title = R.string.voice_input_settings_use_whistle,
             subtitle = R.string.voice_input_settings_use_whistle_subtitle,
             setting = USE_WHISTLE_FOR_ENGLISH
+        ).copy(visibilityCheck = visibilityCheckNotSystemVoiceInput),
+
+        userSettingToggleDataStore(
+            title = R.string.voice_input_settings_live_transcription,
+            subtitle = R.string.voice_input_settings_live_transcription_subtitle,
+            setting = LIVE_TRANSCRIPTION
+        ).copy(visibilityCheck = visibilityCheckNotSystemVoiceInput),
+
+        userSettingToggleDataStore(
+            title = R.string.voice_input_settings_clean_up_speech,
+            subtitle = R.string.voice_input_settings_clean_up_speech_subtitle,
+            setting = CLEAN_UP_SPEECH
         ).copy(visibilityCheck = visibilityCheckNotSystemVoiceInput),
 
         userSettingToggleDataStore(

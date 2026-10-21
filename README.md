@@ -44,6 +44,8 @@ You can then open the project in Android Studio and build it that way, or use gr
 
 Voice input can use [Cactus Whistle](https://huggingface.co/Cactus-Compute/whistle) instead of Whisper for English, switched with *Use Whistle for English* in the voice input settings. The English Whistle model (`whistle.cact`, 16.9 MB) is bundled in the APK: the `voiceinput-shared` build downloads it at a pinned revision and checks its hash. Pass `-PwhistleModel=false` to Gradle to leave it out, in which case the setting falls back to Whisper. Whistle `.cact` models can also be imported like other voice input models.
 
+With Whistle, *Show text while speaking* types out words live as you talk using Whistle's streaming mode, then replaces them with a more accurate full pass when you stop. *Clean up speech* (English, either engine) removes filler words and stutters and applies spoken corrections such as "at 3, no wait, 4" or "scratch that"; it is rule based, so it only acts on clear patterns.
+
 Whistle runs on the Needle engine, which Cactus only publishes as a prebuilt static library, so for `arm64-v8a` and `armeabi-v7a` the native build downloads it from Hugging Face at a pinned revision and checks its hash. To build offline, pass `-DNEEDLE_DIR=<folder with libneedle.a and needle.h>` to CMake, or pass `-DWHISTLE=OFF` to leave Whistle out. Other ABIs are built without Whistle.
 
 ## APK signing

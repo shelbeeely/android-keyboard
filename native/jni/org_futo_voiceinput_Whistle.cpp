@@ -97,6 +97,61 @@ static jstring Whistle_transcribe(JNIEnv *env, jobject instance, jfloatArray sam
 #endif
 }
 
+// Feeds the next samples of a live stream. Returns the engine's JSON output with the newly
+// committed words and the pending tail, or null on failure (see lastErrorNative)
+static jstring Whistle_streamProcess(JNIEnv *env, jobject instance, jfloatArray samples_array, jstring language, jstring keywords) {
+#ifdef HAS_NEEDLE
+    std::string language_str;
+    if(language) language_str = jstring2string(env, language);
+
+    std::string keywords_str;
+    if(keywords) keywords_str = jstring2string(env, keywords);
+
+    jsize num_samples = env->GetArrayLength(samples_array);
+    jfloat *samples = env->GetFloatArrayElements(samples_array, nullptr);
+
+    std::vector<char> output(WHISTLE_OUTPUT_CAPACITY, 0);
+
+    int res = needle_stream_transcribe_process(
+            samples,
+            (int)num_samples,
+            language ? language_str.c_str() : nullptr,
+            keywords ? keywords_str.c_str() : nullptr,
+            output.data(),
+            (int)output.size());
+
+    env->ReleaseFloatArrayElements(samples_array, samples, JNI_ABORT);
+
+    if(res < 0) {
+        AKLOGE("needle_stream_transcribe_process failed with code %d: %s", res, needle_last_error());
+        return nullptr;
+    }
+
+    output.back() = '\0';
+    return string2jstring(env, output.data());
+#else
+    return nullptr;
+#endif
+}
+
+// Ends the current stream so the next streamProcess call starts a new one
+static jstring Whistle_streamStop(JNIEnv *env, jobject instance) {
+#ifdef HAS_NEEDLE
+    std::vector<char> output(WHISTLE_OUTPUT_CAPACITY, 0);
+
+    int res = needle_stream_transcribe_stop(output.data(), (int)output.size());
+    if(res < 0) {
+        AKLOGE("needle_stream_transcribe_stop failed with code %d: %s", res, needle_last_error());
+        return nullptr;
+    }
+
+    output.back() = '\0';
+    return string2jstring(env, output.data());
+#else
+    return nullptr;
+#endif
+}
+
 static const JNINativeMethod sMethods[] = {
         {
                 const_cast<char *>("isAvailableNative"),
@@ -112,6 +167,16 @@ static const JNINativeMethod sMethods[] = {
                 const_cast<char *>("transcribeNative"),
                 const_cast<char *>("([FLjava/lang/String;Ljava/lang/String;)Ljava/lang/String;"),
                 reinterpret_cast<void *>(Whistle_transcribe)
+        },
+        {
+                const_cast<char *>("streamProcessNative"),
+                const_cast<char *>("([FLjava/lang/String;Ljava/lang/String;)Ljava/lang/String;"),
+                reinterpret_cast<void *>(Whistle_streamProcess)
+        },
+        {
+                const_cast<char *>("streamStopNative"),
+                const_cast<char *>("()Ljava/lang/String;"),
+                reinterpret_cast<void *>(Whistle_streamStop)
         },
         {
                 const_cast<char *>("lastErrorNative"),

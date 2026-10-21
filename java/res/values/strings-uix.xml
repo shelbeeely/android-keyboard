@@ -600,6 +600,10 @@
     <string name="voice_input_settings_animate_bubble">Animations</string>
     <string name="voice_input_settings_use_whistle">Use Whistle for English</string>
     <string name="voice_input_settings_use_whistle_subtitle">Transcribe English with Cactus Whistle instead of Whisper</string>
+    <string name="voice_input_settings_live_transcription">Show text while speaking</string>
+    <string name="voice_input_settings_live_transcription_subtitle">Type out words as you say them, then refine the text when you stop. Only available with Whistle</string>
+    <string name="voice_input_settings_clean_up_speech">Clean up speech</string>
+    <string name="voice_input_settings_clean_up_speech_subtitle">Remove filler words and stutters, and apply spoken corrections such as \"at 3, no wait, 4\" or \"scratch that\". English only</string>
     <string name="voice_input_settings_animate_bubble_subtitle">Display a bubble that reacts to speech</string>
     <string name="voice_input_settings_change_models">Models</string>
     <string name="voice_input_settings_change_models_subtitle">To change the models, visit Languages &amp; Models menu</string>

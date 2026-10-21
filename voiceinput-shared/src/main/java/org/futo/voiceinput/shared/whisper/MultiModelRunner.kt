@@ -11,6 +11,7 @@ import org.futo.voiceinput.shared.types.InferenceState
 import org.futo.voiceinput.shared.types.Language
 import org.futo.voiceinput.shared.types.ModelInferenceCallback
 import org.futo.voiceinput.shared.types.ModelLoader
+import org.futo.voiceinput.shared.types.StreamingSpeechModel
 import org.futo.voiceinput.shared.types.getLanguageFromWhisperString
 import org.futo.voiceinput.shared.types.toWhisperString
 
@@ -45,6 +46,13 @@ class MultiModelRunner(
         }
 
         jobs.forEach { it.join() }
+    }
+
+    // The model to transcribe live with while recording, if the configuration allows it. Streaming
+    // cannot switch models by language midway, so it is only used with a single model.
+    fun obtainStreamingModel(runConfiguration: MultiModelRunConfiguration): StreamingSpeechModel? {
+        if(runConfiguration.languageSpecificModels.isNotEmpty()) return null
+        return modelManager.obtainModel(runConfiguration.primaryModel) as? StreamingSpeechModel
     }
 
     @Throws(InferenceCancelledException::class)

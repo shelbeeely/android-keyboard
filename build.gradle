@@ -435,6 +435,9 @@ dependencies {
     implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.1'
     implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json-jvm:1.7.1'
 
+    // Gemini Nano for cleaning up dictation. Later versions need Kotlin 2.3
+    implementation 'com.google.mlkit:genai-prompt:1.0.0-beta2'
+
     implementation 'com.akuleshov7:ktoml-core:0.7.1'
 
     //def work_version = "2.9.0"

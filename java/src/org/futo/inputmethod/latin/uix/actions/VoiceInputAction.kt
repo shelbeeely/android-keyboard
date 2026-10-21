@@ -34,18 +34,21 @@ import org.futo.inputmethod.latin.uix.CLEAN_UP_SPEECH
 import org.futo.inputmethod.latin.uix.CloseResult
 import org.futo.inputmethod.latin.uix.DISALLOW_SYMBOLS
 import org.futo.inputmethod.latin.uix.ENABLE_SOUND
+import org.futo.inputmethod.latin.uix.GEMINI_NANO_LAST_RESULT
 import org.futo.inputmethod.latin.uix.KeyboardManagerForAction
 import org.futo.inputmethod.latin.uix.LIVE_TRANSCRIPTION
 import org.futo.inputmethod.latin.uix.PREFER_BLUETOOTH
 import org.futo.inputmethod.latin.uix.PersistentActionState
 import org.futo.inputmethod.latin.uix.ResourceHelper
 import org.futo.inputmethod.latin.uix.USE_PERSONAL_DICT
+import org.futo.inputmethod.latin.uix.USE_GEMINI_NANO_CLEANUP
 import org.futo.inputmethod.latin.uix.USE_VAD_AUTOSTOP
 import org.futo.inputmethod.latin.uix.USE_WHISTLE_FOR_ENGLISH
 import org.futo.inputmethod.latin.uix.VERBOSE_PROGRESS
 import org.futo.inputmethod.latin.uix.getSetting
 import org.futo.inputmethod.latin.uix.setSetting
 import org.futo.inputmethod.latin.uix.settings.SettingsActivity
+import org.futo.inputmethod.latin.uix.utils.GeminiNanoCleanup
 import org.futo.inputmethod.latin.uix.utils.ModelOutputSanitizer
 import org.futo.inputmethod.latin.uix.utils.SpeechCleanup
 import org.futo.inputmethod.latin.xlm.UserDictionaryObserver
@@ -125,6 +128,7 @@ private class VoiceInputActionWindow(
 
     private var shouldPlaySounds: Boolean = false
     private var shouldCleanUpSpeech: Boolean = false
+    private var shouldUseGeminiNano: Boolean = false
     private fun loadSettings(): RecognizerViewSettings {
         val enableSound = context.getSetting(ENABLE_SOUND)
         val verboseFeedback = false//context.getSetting(VERBOSE_PROGRESS)
@@ -149,6 +153,7 @@ private class VoiceInputActionWindow(
         shouldPlaySounds = enableSound
         shouldCleanUpSpeech = context.getSetting(CLEAN_UP_SPEECH)
                 && locales.firstOrNull()?.language == "en"
+        shouldUseGeminiNano = shouldCleanUpSpeech && context.getSetting(USE_GEMINI_NANO_CLEANUP)
 
         return RecognizerViewSettings(
             shouldShowInlinePartialResult = false,
@@ -275,11 +280,26 @@ private class VoiceInputActionWindow(
     private fun cleanUp(result: String): String =
         if(shouldCleanUpSpeech) SpeechCleanup.clean(result) else result
 
+    // The final text can be rewritten by Gemini Nano, falling back to the rule-based clean up
+    private suspend fun cleanUpFinal(result: String): String {
+        if(shouldUseGeminiNano) {
+            val nano = GeminiNanoCleanup.clean(result)
+            val outcome = when(nano) {
+                is GeminiNanoCleanup.Result.Success -> context.getString(R.string.voice_input_settings_gemini_nano_worked)
+                is GeminiNanoCleanup.Result.Failure -> nano.reason
+            }
+            manager.getLifecycleScope().launch { context.setSetting(GEMINI_NANO_LAST_RESULT, outcome) }
+
+            if(nano is GeminiNanoCleanup.Result.Success) return nano.text
+        }
+        return cleanUp(result)
+    }
+
     override fun finished(result: String) {
         wasFinished = true
 
         manager.getLifecycleScope().launch(Dispatchers.Main) {
-            val sanitized = ModelOutputSanitizer.sanitize(cleanUp(result), inputTransaction.textContext)
+            val sanitized = ModelOutputSanitizer.sanitize(cleanUpFinal(result), inputTransaction.textContext)
             inputTransaction.commit(sanitized)
             manager.announce(result)
             manager.closeActionWindow()

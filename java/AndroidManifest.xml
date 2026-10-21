@@ -35,6 +35,13 @@
 
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove"/>
 
+    <!-- ML Kit (for Gemini Nano) pulls in Google's telemetry, which asks for network access. The
+         keyboard never gets it; Gemini Nano itself is downloaded by the system's AICore service. -->
+    <uses-permission android:name="android.permission.INTERNET" tools:node="remove"/>
+
+    <!-- ML Kit's GenAI libraries need Android 8, GeminiNanoCleanup checks for it before use -->
+    <uses-sdk tools:overrideLibrary="com.google.mlkit.genai.prompt, com.google.mlkit.genai.common"/>
+
     <application android:label="@string/english_ime_name"
          android:icon="@mipmap/ic_launcher"
          android:roundIcon="@mipmap/ic_launcher_round"

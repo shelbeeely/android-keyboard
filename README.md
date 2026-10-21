@@ -46,6 +46,8 @@ Voice input can use [Cactus Whistle](https://huggingface.co/Cactus-Compute/whist
 
 With Whistle, *Show text while speaking* types out words live as you talk using Whistle's streaming mode, then replaces them with a more accurate full pass when you stop. *Clean up speech* (English, either engine) removes filler words and stutters and applies spoken corrections such as "at 3, no wait, 4" or "scratch that"; it is rule based, so it only acts on clear patterns.
 
+On phones with Gemini Nano (such as the Pixel 9 and 10), *Clean up with Gemini Nano* rewrites the final text with Google's on-device model through ML Kit's GenAI Prompt API, falling back to the rule-based clean up when it fails. Android's AICore service only serves the app in the foreground and may refuse a keyboard; the voice input settings show whether it worked the last time the keyboard tried. ML Kit brings in Google Play services libraries, and the network permission they ask for is removed from the manifest.
+
 Whistle runs on the Needle engine, which Cactus only publishes as a prebuilt static library, so for `arm64-v8a` and `armeabi-v7a` the native build downloads it from Hugging Face at a pinned revision and checks its hash. To build offline, pass `-DNEEDLE_DIR=<folder with libneedle.a and needle.h>` to CMake, or pass `-DWHISTLE=OFF` to leave Whistle out. Other ABIs are built without Whistle.
 
 ## APK signing

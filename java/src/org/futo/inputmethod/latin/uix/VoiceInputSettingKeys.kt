@@ -2,6 +2,7 @@ package org.futo.inputmethod.latin.uix
 
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 
 val ENABLE_SOUND = SettingsKey(
@@ -87,4 +88,15 @@ val LIVE_TRANSCRIPTION = SettingsKey(
 val CLEAN_UP_SPEECH = SettingsKey(
     key = booleanPreferencesKey("clean_up_speech"),
     default = false
+)
+
+val USE_GEMINI_NANO_CLEANUP = SettingsKey(
+    key = booleanPreferencesKey("use_gemini_nano_cleanup"),
+    default = false
+)
+
+// What happened the last time the keyboard asked Gemini Nano, shown in settings
+val GEMINI_NANO_LAST_RESULT = SettingsKey(
+    key = stringPreferencesKey("gemini_nano_last_result"),
+    default = ""
 )

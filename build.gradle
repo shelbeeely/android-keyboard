@@ -1,9 +1,9 @@
 //file:noinspection HardCodedStringLiteral
 plugins {
     id 'com.android.application' version '8.10.1'
-    id 'org.jetbrains.kotlin.android' version '2.1.0'
-    id 'org.jetbrains.kotlin.plugin.compose' version '2.1.0'
-    id 'org.jetbrains.kotlin.plugin.serialization' version '2.1.0'
+    id 'org.jetbrains.kotlin.android' version '2.3.21'
+    id 'org.jetbrains.kotlin.plugin.compose' version '2.3.21'
+    id 'org.jetbrains.kotlin.plugin.serialization' version '2.3.21'
     id 'com.android.library' version '8.10.1' apply false
 }
 
@@ -384,9 +384,6 @@ android {
         }
     }
 
-    kotlinOptions {
-        jvmTarget = '1.8'
-    }
     buildFeatures {
         compose true
         viewBinding true
@@ -398,6 +395,12 @@ android {
         jniLibs {
             useLegacyPackaging = true
         }
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8
     }
 }
 
@@ -435,8 +438,8 @@ dependencies {
     implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.1'
     implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json-jvm:1.7.1'
 
-    // Gemini Nano for cleaning up dictation. Later versions need Kotlin 2.3
-    implementation 'com.google.mlkit:genai-prompt:1.0.0-beta2'
+    // Gemini Nano for cleaning up dictation
+    implementation 'com.google.mlkit:genai-prompt:1.0.0-beta4'
 
     implementation 'com.akuleshov7:ktoml-core:0.7.1'
 

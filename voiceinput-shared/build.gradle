@@ -1,7 +1,7 @@
 plugins {
     id 'com.android.library' version '8.10.1'
-    id 'org.jetbrains.kotlin.android' version '2.1.0'
-    id 'org.jetbrains.kotlin.plugin.compose' version '2.1.0'
+    id 'org.jetbrains.kotlin.android' version '2.3.21'
+    id 'org.jetbrains.kotlin.plugin.compose' version '2.3.21'
 }
 
 final def translationsWithoutEngValues = { final String path ->
@@ -138,9 +138,6 @@ android {
         targetCompatibility JavaVersion.VERSION_1_8
     }
 
-    kotlinOptions {
-        jvmTarget = '1.8'
-    }
     buildFeatures {
         compose true
         viewBinding true
@@ -149,6 +146,12 @@ android {
 }
 
 preBuild.dependsOn("downloadWhistleModel")
+
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8
+    }
+}
 
 dependencies {
     implementation 'androidx.core:core-ktx:1.13.1'
